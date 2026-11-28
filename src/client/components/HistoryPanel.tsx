@@ -8,6 +8,7 @@ interface Props {
   history: MatchRecord[];
   onReplay: (record: MatchRecord) => void;
   onExport: (record: MatchRecord) => void;
+  onReel: (record: MatchRecord) => void;
   onDelete: (id: string) => void;
   onImport: (record: MatchRecord) => void;
 }
@@ -41,7 +42,7 @@ function headToHead(history: MatchRecord[]): HeadToHead[] {
   return [...map.values()].sort((x, y) => y.games - x.games);
 }
 
-export function HistoryPanel({ history, onReplay, onExport, onDelete, onImport }: Props) {
+export function HistoryPanel({ history, onReplay, onExport, onReel, onDelete, onImport }: Props) {
   const file = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const rows = useMemo(() => headToHead(history), [history]);
@@ -142,6 +143,9 @@ export function HistoryPanel({ history, onReplay, onExport, onDelete, onImport }
                 <div className="history-actions">
                   <button type="button" className="btn btn--secondary btn--sm" onClick={() => onReplay(r)} disabled={r.turns.length === 0}>
                     <Icon name="eye" size={16} /> Replay
+                  </button>
+                  <button type="button" className="btn btn--ghost btn--icon" onClick={() => onReel(r)} disabled={r.turns.length === 0} aria-label="Download reel video" title="Download reel video">
+                    <Icon name="video" size={16} />
                   </button>
                   <button type="button" className="btn btn--ghost btn--icon" onClick={() => onExport(r)} aria-label="Export match JSON">
                     <Icon name="download" size={16} />

@@ -10,6 +10,7 @@ import { HistoryPanel } from "./components/HistoryPanel";
 import { Icon } from "./components/Icon";
 import { MatchSettings } from "./components/MatchSettings";
 import { MatchView } from "./components/MatchView";
+import { ReelPanel } from "./components/ReelPanel";
 import { ReplayView } from "./components/ReplayView";
 import { RobotConfig } from "./components/RobotConfig";
 import { RulesPanel } from "./components/RulesPanel";
@@ -81,7 +82,8 @@ export function App() {
   const [replay, setReplay] = useState<MatchRecord | null>(null);
   const [history, setHistory] = useState<MatchRecord[]>(loadHistory);
   const [muted, setMuted] = useState<boolean>(() => loadJson(MUTE_KEY, false));
-  const [dialog, setDialog] = useState<null | "rules" | "history" | "settings">(null);
+  const [dialog, setDialog] = useState<null | "rules" | "history" | "settings" | "reel">(null);
+  const [reelRecord, setReelRecord] = useState<MatchRecord | null>(null);
   const [battlefield, setBattlefield] = useState<Battlefield | null>(null);
   const [webglFailed, setWebglFailed] = useState(false);
   const runnerRef = useRef<MatchRunner | null>(null);
@@ -314,6 +316,11 @@ export function App() {
     downloadJson(`uplink-duel_${slug(record.players.A.name)}-vs-${slug(record.players.B.name)}_${stamp}.json`, record);
   };
 
+  const openReel = (record: MatchRecord) => {
+    setReelRecord(record);
+    setDialog("reel");
+  };
+
   const swapSides = () => setSetup((s) => ({ ...s, players: { A: s.players.B, B: s.players.A } }));
 
   const seriesSummary = series ? { game: series.index + 1, of: series.configs.length, records: series.records } : null;
@@ -426,13 +433,17 @@ export function App() {
             onRematch={rematch}
             onReplay={openReplay}
             onExport={exportRecord}
+            onReel={openReel}
             onSetup={backToSetup}
           />
         )}
 
-        {screen === "replay" && replay && <ReplayView key={replay.id} record={replay} battlefield={battlefield} providers={providers ?? []} onExit={exitReplay} onExport={() => exportRecord(replay)} />}
+        {screen === "replay" && replay && <ReplayView key={replay.id} record={replay} battlefield={battlefield} providers={providers ?? []} onExit={exitReplay} onExport={() => exportRecord(replay)} onReel={() => openReel(replay)} />}
       </main>
 
+      <Dialog open={dialog === "reel"} title="Download reel" onClose={() => setDialog(null)}>
+        {reelRecord && <ReelPanel key={reelRecord.id} record={reelRecord} providers={providers ?? []} />}
+      </Dialog>
       <Dialog open={dialog === "settings"} title="Settings" onClose={() => setDialog(null)}>
         <SettingsPanel openRouterKey={openRouterKey} onSaveKey={saveKey} onClose={() => setDialog(null)} />
       </Dialog>
@@ -444,6 +455,7 @@ export function App() {
           history={history}
           onReplay={openReplay}
           onExport={exportRecord}
+          onReel={openReel}
           onDelete={(id) => setHistory(removeFromHistory(id))}
           onImport={(record) => {
             setHistory(saveToHistory(record));

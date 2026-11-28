@@ -118,6 +118,7 @@ next side ─► POST /api/decide with the updated state …
 - Match: live HUD (HP, points, stances, thinking timer), action log with each model's explanation, result, retries and decision time; select any action to inspect before/after mini-maps, state changes and rejected attempts.
 - Controls: pause/resume (Space), stop, restart, live turn-delay slider, rotate view (R), mute. Sound is synthesized with Web Audio (no audio files).
 - Result: winner and exact reason, per-side stats, key moments, series standing; rematch with the other side first.
+- Reel video: **Download reel** (on the result card, in history and in replay) renders a stored match as a 1080×1920 MP4 for Instagram, with both models, scores, HP, each action with the model's explanation, the result and optional sound effects. It is encoded in the browser (WebCodecs, via mediabunny), so nothing is uploaded; thinking time is left out and three paces set the length. It needs a browser that can encode H.264, such as Chrome or Edge.
 - History: the last 40 matches are saved in the browser. Replay step by step, export and import JSON, and see head-to-head tallies by model.
 
 ## Match records
@@ -136,7 +137,7 @@ Games alternate the first mover and trade start tiles in pairs to cancel setup a
 ## Tests
 
 ```bash
-npm test             # 99 unit/integration tests (vitest)
+npm test             # 103 unit/integration tests (vitest)
 npm run typecheck
 npm run smoke        # with the app running (first time: npx playwright install chromium): real-browser run of setup → full match → result → replay → history,
                      # at 1440×900, 820×1180 and 390×844; screenshots in artifacts/, fails on console errors or overflow

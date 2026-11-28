@@ -14,6 +14,14 @@ export type SoundName = "step" | "fire" | "hit" | "shield" | "overwatch" | "capt
 export interface BattlefieldOptions {
   reducedMotion?: boolean;
   onSound?: (name: SoundName) => void;
+  /** Render off screen at this size on a manual clock (`advance`), for video export. */
+  offline?: { width: number; height: number };
+}
+
+/** Where the name plates and floating numbers sit, in canvas pixels, so a video can draw them. */
+export interface SceneOverlay {
+  plates: { side: Side; x: number; y: number; hp: number }[];
+  floaters: { x: number; y: number; text: string; sub: string; kind: "damage" | "score" | "tag"; side: Side; age: number }[];
 }
 
 interface RobotView {
@@ -27,6 +35,7 @@ interface RobotView {
   plate: HTMLDivElement;
   plateHp: HTMLDivElement;
   plateName: HTMLSpanElement;
+  hp: number;
 }
 
 interface UplinkView {
@@ -42,7 +51,15 @@ interface UplinkView {
 interface Floater {
   el: HTMLDivElement;
   world: THREE.Vector3;
+  text: string;
+  sub: string;
+  kind: "damage" | "score" | "tag";
+  side: Side;
+  /** Manual-clock time it appeared; only used off screen. */
+  born: number;
 }
+
+const FLOATER_MS = 1300;
 
 const TILE_HEIGHT = 0.42;
 const ROBOT_SCALE = 1.32;
@@ -112,7 +129,9 @@ export class Battlefield implements Presenter {
   private readonly camera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 100);
   private readonly animator = new Animator();
   private readonly labels: HTMLDivElement;
-  private readonly resizeObserver: ResizeObserver;
+  private readonly resizeObserver: ResizeObserver | null = null;
+  private readonly offline: { width: number; height: number } | null;
+  private clock = 0;
   private boardGroup = new THREE.Group();
   private readonly fx = new THREE.Group();
   private robots: Record<Side, RobotView> | null = null;
@@ -146,9 +165,10 @@ export class Battlefield implements Presenter {
     this.reducedMotion = options.reducedMotion ?? false;
     this.onSound = options.onSound ?? (() => {});
     this.animator.speed = this.reducedMotion ? 0.45 : 1;
+    this.offline = options.offline ?? null;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(this.offline ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
@@ -179,10 +199,28 @@ export class Battlefield implements Presenter {
     };
     for (const layer of Object.values(this.layers)) this.scene.add(layer.mesh);
 
-    this.resizeObserver = new ResizeObserver(() => this.resize());
-    this.resizeObserver.observe(container);
+    if (!this.offline) {
+      this.resizeObserver = new ResizeObserver(() => this.resize());
+      this.resizeObserver.observe(container);
+    }
     this.resize();
-    this.raf = requestAnimationFrame(this.frame);
+    if (!this.offline) this.raf = requestAnimationFrame(this.frame);
+  }
+
+  /** Off screen only: moves the clock on by `ms`, draws, and returns the canvas holding that frame. */
+  advance(ms: number): HTMLCanvasElement {
+    this.clock += ms;
+    this.floaters = this.floaters.filter((f) => this.clock - f.born < FLOATER_MS);
+    this.draw(this.clock, ms / 1000);
+    return this.renderer.domElement;
+  }
+
+  overlay(): SceneOverlay {
+    const at = (world: THREE.Vector3) => this.project(world);
+    return {
+      plates: this.robots ? Object.values(this.robots).map((v) => ({ side: v.side, hp: v.hp, ...at(v.rig.root.position.clone().setY(1.45)) })) : [],
+      floaters: this.floaters.map((f) => ({ ...at(f.world.clone()), text: f.text, sub: f.sub, kind: f.kind, side: f.side, age: (this.clock - f.born) / FLOATER_MS })),
+    };
   }
 
   // ---------------------------------------------------------------- setup
@@ -453,7 +491,7 @@ export class Battlefield implements Presenter {
       plate.append(plateName, bar);
       plate.style.setProperty("--team", this.colors[side]);
       this.labels.appendChild(plate);
-      return { rig, side, pos: [0, 0], facing: 0, braced: false, disabled: 0, walking: 0, plate, plateHp, plateName };
+      return { rig, side, pos: [0, 0], facing: 0, braced: false, disabled: 0, walking: 0, plate, plateHp, plateName, hp: this.rules?.maxHp ?? 12 };
     };
     this.robots = { A: make("A"), B: make("B") };
   }
@@ -530,6 +568,7 @@ export class Battlefield implements Presenter {
 
   private setPlateHp(view: RobotView, hp: number): void {
     const max = this.rules?.maxHp ?? 12;
+    view.hp = Math.max(0, hp);
     view.plateHp.style.transform = `scaleX(${Math.max(0, hp) / max})`;
     view.plate.classList.toggle("is-down", hp <= 0);
   }
@@ -743,6 +782,7 @@ export class Battlefield implements Presenter {
     // Impact.
     this.onSound("hit");
     this.sparks(end, color);
+    if (this.offline) target.hp = Math.max(0, target.hp - damage);
     this.float(target, `−${damage}`, "damage", 0.7, modifiers.filter((m) => m !== "minimum").join(" · "));
     await Promise.all([
       recoil,
@@ -837,12 +877,13 @@ export class Battlefield implements Presenter {
       el.appendChild(small);
     }
     this.labels.appendChild(el);
-    const floater: Floater = { el, world: view.rig.root.position.clone().add(new THREE.Vector3(0, height * 1.2, 0)) };
+    const floater: Floater = { el, world: view.rig.root.position.clone().add(new THREE.Vector3(0, height * 1.2, 0)), text, sub, kind, side: view.side, born: this.clock };
     this.floaters.push(floater);
+    if (this.offline) return;
     window.setTimeout(() => {
       el.remove();
       this.floaters = this.floaters.filter((f) => f !== floater);
-    }, 1300);
+    }, FLOATER_MS);
   }
 
   // ---------------------------------------------------------------- frame loop
@@ -897,7 +938,7 @@ export class Battlefield implements Presenter {
   }
 
   private resize(): void {
-    const rect = this.container.getBoundingClientRect();
+    const rect = this.offline ?? this.container.getBoundingClientRect();
     this.width = Math.max(1, rect.width);
     this.height = Math.max(1, rect.height);
     this.renderer.setSize(this.width, this.height, false);
@@ -909,6 +950,11 @@ export class Battlefield implements Presenter {
     this.raf = requestAnimationFrame(this.frame);
     const dt = Math.min(0.05, (now - (this.lastTime || now)) / 1000);
     this.lastTime = now;
+    this.draw(now, dt);
+    this.updateLabels();
+  };
+
+  private draw(now: number, dt: number): void {
     this.animator.tick(now);
 
     if (Math.abs(this.yaw - this.yawTarget) > 0.0005) {
@@ -942,8 +988,7 @@ export class Battlefield implements Presenter {
     }
 
     this.renderer.render(this.scene, this.camera);
-    this.updateLabels();
-  };
+  }
 
   private project(world: THREE.Vector3): { x: number; y: number } {
     this.tmp.copy(world).project(this.camera);
@@ -968,11 +1013,13 @@ export class Battlefield implements Presenter {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.animator.finishAll();
-    this.resizeObserver.disconnect();
+    this.resizeObserver?.disconnect();
     this.disposeGroup(this.scene);
     this.scene.environment?.dispose();
     this.dotTex.dispose();
     this.renderer.dispose();
+    // Browsers cap live WebGL contexts, so a finished export frees its one at once.
+    if (this.offline) this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     this.labels.remove();
   }

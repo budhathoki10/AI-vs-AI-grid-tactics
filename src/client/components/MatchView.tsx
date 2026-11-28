@@ -27,6 +27,7 @@ interface Props {
   onRematch: () => void;
   onReplay: (record: MatchRecord) => void;
   onExport: (record: MatchRecord) => void;
+  onReel: (record: MatchRecord) => void;
   onSetup: () => void;
 }
 
@@ -35,7 +36,7 @@ function isTyping(target: EventTarget | null): boolean {
   return !!el && (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA" || el.isContentEditable);
 }
 
-export function MatchView({ runner, battlefield, providers, series, nextIn, muted, onToggleMute, onNext, onRestart, onRematch, onReplay, onExport, onSetup }: Props) {
+export function MatchView({ runner, battlefield, providers, series, nextIn, muted, onToggleMute, onNext, onRestart, onRematch, onReplay, onExport, onReel, onSetup }: Props) {
   const snap = useSyncExternalStore(runner.subscribe, runner.getSnapshot);
   const { phase, state, record, thinking, executing } = snap;
   const [selected, setSelected] = useState<number | null>(null);
@@ -159,6 +160,7 @@ export function MatchView({ runner, battlefield, providers, series, nextIn, mute
             onRematch={onRematch}
             onReplay={() => onReplay(record)}
             onExport={() => onExport(record)}
+            onReel={() => onReel(record)}
             onSetup={onSetup}
             onDismiss={() => setResultHidden(true)}
           />

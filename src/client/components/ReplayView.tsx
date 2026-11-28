@@ -15,6 +15,7 @@ interface Props {
   providers: ProviderInfo[];
   onExit: () => void;
   onExport: () => void;
+  onReel: () => void;
 }
 
 const SPEEDS = [0.5, 1, 2] as const;
@@ -23,7 +24,7 @@ const SPEEDS = [0.5, 1, 2] as const;
  * Step-by-step replay of a stored match. States are recomputed with the engine from the recorded
  * actions, so the replay also proves the record is consistent with the rules.
  */
-export function ReplayView({ record, battlefield, providers, onExit, onExport }: Props) {
+export function ReplayView({ record, battlefield, providers, onExit, onExport, onReel }: Props) {
   const board = useMemo(() => buildBoard(getMap(record.mapId), record.swapStarts), [record]);
   const check = useMemo(() => verifyReplay(record), [record]);
   const states = useMemo(() => [record.initialState, ...record.turns.map((t) => t.stateAfter)], [record]);
@@ -176,6 +177,9 @@ export function ReplayView({ record, battlefield, providers, onExit, onExport }:
         <span className="dock-sep" aria-hidden="true" />
         <button type="button" className="btn btn--ghost btn--icon" onClick={() => battlefield?.rotate(1)} aria-label="Rotate view">
           <Icon name="rotate" />
+        </button>
+        <button type="button" className="btn btn--ghost btn--icon" onClick={onReel} disabled={total === 0} aria-label="Download reel video" title="Download reel video">
+          <Icon name="video" />
         </button>
         <button type="button" className="btn btn--ghost btn--icon" onClick={onExport} aria-label="Export match JSON">
           <Icon name="download" />

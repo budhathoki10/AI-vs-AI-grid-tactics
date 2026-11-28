@@ -1,7 +1,7 @@
 import { once } from "node:events";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest } from "../src/ai/protocol";
 import { createInitialState } from "../src/engine/engine";
 import { buildBoard, getMap } from "../src/engine/maps";
@@ -178,7 +178,15 @@ describe("DecisionGate", () => {
 
 describe("HTTP API", () => {
   let server: Server | null = null;
-  afterEach(() => server?.close());
+  // Listing providers asks the CLIs who is signed in; tests must not start the real, slow ones.
+  beforeEach(() => {
+    process.env.CLAUDE_BIN = process.env.CODEX_BIN = "uplink-test-no-such-cli";
+  });
+  afterEach(() => {
+    delete process.env.CLAUDE_BIN;
+    delete process.env.CODEX_BIN;
+    server?.close();
+  });
 
   async function listen(registry: Map<string, ProviderAdapter>): Promise<string> {
     const api = createApi({ registry, backoffMs: 0 });

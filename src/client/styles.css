@@ -724,6 +724,52 @@ code {
   color: var(--text);
 }
 
+/* Reel export */
+.reel {
+  display: grid;
+  gap: 16px;
+}
+.reel-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.reel-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--focus);
+}
+.reel-progress {
+  display: grid;
+  gap: 8px;
+}
+.reel-progress progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--ok);
+}
+.reel-preview {
+  justify-self: center;
+  width: auto;
+  max-width: 100%;
+  height: min(460px, 52dvh);
+  aspect-ratio: 9 / 16;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: #000;
+}
+.reel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.reel-actions a {
+  text-decoration: none;
+}
+
 .swatches {
   display: grid;
   grid-template-columns: repeat(8, 1fr);

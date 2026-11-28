@@ -20,6 +20,7 @@ interface Props {
   onRematch: () => void;
   onReplay: () => void;
   onExport: () => void;
+  onReel: () => void;
   onSetup: () => void;
   onDismiss: () => void;
 }
@@ -41,7 +42,7 @@ export function seriesTally(records: MatchRecord[]): { A: number; B: number; dra
   return t;
 }
 
-export function ResultCard({ record, providers, series, nextIn, onNext, onRematch, onReplay, onExport, onSetup, onDismiss }: Props) {
+export function ResultCard({ record, providers, series, nextIn, onNext, onRematch, onReplay, onExport, onReel, onSetup, onDismiss }: Props) {
   const result = record.result!;
   const players = record.players;
   const winner = result.winner;
@@ -160,6 +161,11 @@ export function ResultCard({ record, providers, series, nextIn, onNext, onRematc
         <button type="button" className="btn btn--secondary" onClick={onReplay}>
           <Icon name="eye" /> Replay
         </button>
+        {record.turns.length > 0 && (
+          <button type="button" className="btn btn--secondary" onClick={onReel}>
+            <Icon name="video" /> Download reel
+          </button>
+        )}
         <button type="button" className="btn btn--secondary" onClick={onExport}>
           <Icon name="download" /> Export JSON
         </button>

@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   root: "src/client",
   publicDir: false,
+  // The video encoder is imported only when a reel is made; preparing it up front stops dev mode reloading the page then.
+  optimizeDeps: { include: ["mediabunny"] },
   plugins: [react()],
   build: {
     outDir: "../../dist",
